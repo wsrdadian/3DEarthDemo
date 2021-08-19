@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>My first three.js app</title>
+		<style>
+			body { margin: 0; }
+		</style>
+	</head>
+	<body>
+        <script src="src/plus/three.js"></script>
+        <script src="src/plus/js/controls/OrbitControls.js"></script>
+		<script>
+            // 球面取点
+            function getDotPosition(r, a, b){
+                let x = Number(r*Math.sin(a)*Math.cos(b)).toFixed(12)*1
+                let y = Number(r*Math.sin(a)*Math.sin(b)).toFixed(12)*1
+                let z = Number(r*Math.cos(a)).toFixed(12)*1
+                return {x, y, z}
+            }
+            // 随机取点
+            function setRandomDot(dotGroup){
+                let dotmaterial = new THREE.MeshBasicMaterial( { color: 0xff0000 } )
+                let dot = new THREE.SphereGeometry( 1, 2, 2 )
+                let pos = getDotPosition(600, Math.PI*2*Math.random(), Math.PI*2*Math.random())
+                const dotModel = new THREE.Mesh( dot, dotmaterial )
+                dotModel.position.x = pos.x
+                dotModel.position.y = pos.y
+                dotModel.position.z = pos.z
+                dotGroup.add( dotModel )
+            }
+            // 计算v1,v2中点
+            function getCenterPoint(v1, v2){
+                let v = v1.add(v2)
+                return v.divideScalar(2)
+            }
+            // 计算v1,v2固定长度的点
+            function getLenVector(v1, v2, len){
+                let v1v2Len = v1.distanceTo(v2)
+                return v1.lerp(v2, len/v1v2Len)
+            }
+            function line(v0, v1, v2, v3){
+                
+            }
+            function drawLine(dot1, dot2){
+                // 开始和结束位置
+                let v0 = dot1.position
+                let v3 = dot2.position
+                // 夹角 范围是0-pi
+                let angle = v0.angleTo(v3)*180/Math.PI/10
+                // 原点
+                let p0 = new THREE.Vector3( 0, 0, 0 )
+                let alen = angle * 50
+                // 指数增长
+                let hLen = angle * angle * 120
+                // 法线相量
+                let rayLine = new THREE.Ray(p0, getCenterPoint(v0.clone(), v3.clone()).clone())
+                // 顶点坐标
+                let vHead = new THREE.Vector3( 0, 0, 0 )
+                rayLine.at(rayLine.at(1, new THREE.Vector3( 0, 0, 0 )).distanceTo(p0), vHead)
+                let v1 = getLenVector(v0.clone(), vHead.clone(), alen)
+                let v2 = getLenVector(v3.clone(), vHead.clone(), alen)
+                // let lineObj = line(v0, v1, v2, v3)
+                let curve = new THREE.CubicBezierCurve3(v0, v1, v2, v3)
+                let points = curve.getPoints( 50 )
+                let geometry = new THREE.BufferGeometry().setFromPoints( points )
+                let material = new THREE.LineBasicMaterial( { color : 0x016fce } )
+                // Create the final object to add to the scene
+                let curveObject = new THREE.Line( geometry, material )
+                return {curve: curve, line: curveObject}
+            }
+            function animate(){
+                renderer.render( scene, camera )
+                requestAnimationFrame( animate )
+            }
+            // 添加动画
+            function animateLine(){
+                animateDotsGroup.children.forEach((element,index) => {
+                    let v = animateDots[index][vindex]
+                    element.position.x = v.x
+                    element.position.y = v.y
+                    element.position.z = v.z
+                })
+                vindex ++
+                if(vindex > 100){
+                    vindex = 0
+                }
+                requestAnimationFrame( animateLine )
+            }
+            // 初始化配置
+			const scene = new THREE.Scene()
+			const camera = new THREE.PerspectiveCamera( 75, window.innerWidth / window.innerHeight, 0.1, 10000 )
+			camera.position.z = 1400
+            const light = new THREE.HemisphereLight( 0xffffff, 0xffffff, 50 )
+            const helper = new THREE.HemisphereLightHelper( light, 50 )
+            scene.add( helper )
+            const renderer = new THREE.WebGLRenderer()
+			renderer.setSize( window.innerWidth, window.innerHeight )
+			document.body.appendChild( renderer.domElement )
+            // 设置地球纹理
+            const texture = new THREE.TextureLoader().load( 'src/images/earth.jpeg' )
+            const material = new THREE.MeshBasicMaterial( { map: texture, side: THREE.DoubleSide } )
+            const earth = new THREE.SphereGeometry( 600, 100, 100 )
+            const sphere = new THREE.Mesh( earth, material )
+            scene.add( sphere )
+            let animateDots = []
+            // 创建小球组
+            const dotGroup = new THREE.Group()
+            for(let i = 0; i < 100 ;  i ++){
+                setRandomDot(dotGroup)
+            }
+            scene.add( dotGroup )
+            const lineGroup = new THREE.Group()
+            scene.add( lineGroup )
+            for(let i = 0; i < 100 ;  i ++){
+                let lineObj = drawLine(dotGroup.children[i], dotGroup.children[0])
+                animateDots.push(lineObj.curve.getPoints(100))
+                lineGroup.add( lineObj.line )
+            }
+            const animateDotsGroup = new THREE.Group()
+            for(let i = 0; i < animateDots.length; i ++){
+                let animateDots = new THREE.SphereGeometry( 3, 3, 3 )
+                let animateDotsMaterial = new THREE.MeshBasicMaterial( { color: 0x009fb6 } )
+                const animateDotsModel = new THREE.Mesh( animateDots, animateDotsMaterial )
+                animateDotsGroup.add(animateDotsModel)
+            }
+            scene.add( animateDotsGroup )
+            let vindex = 0
+            animate()
+            animateLine()
+            // 设置鼠标控制
+            const controls = new THREE.OrbitControls( camera, renderer.domElement )
+		</script>
+	</body>
+</html>
